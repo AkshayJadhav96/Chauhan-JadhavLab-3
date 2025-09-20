@@ -8,7 +8,9 @@ VERSION = 1
 HELLO = 0              
 DATA = 1               
 ALIVE = 2              
-GOODBYE = 3            
+GOODBYE = 3   
+
+COMMAND_NAMES = ('HELLO', 'DATA', 'ALIVE', 'GOODBYE')
 
 # This format string tells Python how to pack/unpack the header.
 # > = Big-endian (network byte order)
