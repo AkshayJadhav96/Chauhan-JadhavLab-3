@@ -1,0 +1,14 @@
+MAGIC_NUMBER = 0xC461
+VERSION = 1
+
+# Command Types
+HELLO = 0
+DATA = 1
+ALIVE = 2
+GOODBYE = 3
+
+COMMAND_NAMES = ('HELLO', 'DATA', 'ALIVE', 'GOODBYE')
+
+# Struct format for headers
+HEADER_FORMAT = '>HBBIIQQ'
+HEADER_SIZE = 28  # calcsize(HEADER_FORMAT) → 2+1+1+4+4+8+8
