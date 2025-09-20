@@ -1,3 +1,0 @@
-line one from file
-line two from file
-line three from file
