@@ -1,9 +1,13 @@
-#!/usr/bin/env python3
-import asyncio
-from client_code.client_main import main
+#!/usr/bin/env bash
 
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\nExiting...")
+# This script launches the Python UDP client.
+
+# 1. Check if exactly two arguments (hostname and port) are provided.
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 <hostname> <portnum>"
+    exit 1
+fi
+
+# 2. Execute the Python client as a module.
+#    This ensures Python can find the 'protocol' directory.
+python3 -m client_code.client_main "$1" "$2"

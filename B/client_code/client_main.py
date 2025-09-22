@@ -10,22 +10,24 @@ async def input_handler(protocol_instance):
     """A coroutine to handle keyboard input."""
     loop = asyncio.get_running_loop()
     while not protocol_instance.shutdown_event.is_set():
-        if protocol_instance.state == 'READY':
+        if protocol_instance.state in ('READY','READY_TIMER'):
             # Run the blocking readline() in a separate thread
             line = await loop.run_in_executor(None, sys.stdin.readline)
 
             if not line: # for end of file
                 print("\n--- End of input detected (EOF). Sending GOODBYE. ---")
                 protocol_instance.send_goodbye()
+                break
 
             line = line.strip()
             if sys.stdin.isatty() and line == 'q':
                 print("\n--- 'q' detected. Sending GOODBYE. ---")
                 protocol_instance.send_goodbye()
+                break
             else:
                 protocol_instance.send_data(line)
         else:
-            await asyncio.sleep(0)
+            await asyncio.sleep(1)
 
 
 async def main():
@@ -51,6 +53,12 @@ async def main():
     shutdown_task = asyncio.create_task(shutdown_event.wait())
 
     # Wait for either the input handler to finish or the shutdown event to be set
-    await asyncio.wait([input_task, shutdown_task], return_when=asyncio.FIRST_COMPLETED)
+    await shutdown_task
 
     transport.close()
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nServer shutting down.")

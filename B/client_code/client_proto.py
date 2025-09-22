@@ -11,10 +11,12 @@ class ClientProtocol:
         self.transport = None
         self.client_seq_num = 0
         self.client_lc = 0
-        self.state = 'WAITING_FOR_HELLO'
+        self.state = 'HELLO_WAIT'
         self.timeout_handle = None
     
     def send_hello(self):
+        if self.timeout_handle:
+            self.timeout_handle.cancel()
         self.client_lc+=1
         hello_packet = pack_header(
             constants.HELLO, self.client_seq_num, self.session_id, 
@@ -26,6 +28,8 @@ class ClientProtocol:
         self.timeout_handle = self.loop.call_later(5, self._handle_timeout)
 
     def send_goodbye(self):
+        if self.timeout_handle:
+            self.timeout_handle.cancel()
         self.client_lc+=1
         goodbye_packet = pack_header(
             constants.GOODBYE, self.client_seq_num,
@@ -40,6 +44,8 @@ class ClientProtocol:
         self.timeout_handle = self.loop.call_later(5, self._handle_timeout)
 
     def send_data(self,line):
+        if self.timeout_handle:
+            self.timeout_handle.cancel()
         self.client_lc += 1
         
         # Pack and send the DATA message
@@ -54,7 +60,7 @@ class ClientProtocol:
         print(f"-----> Sent DATA packet #{self.client_seq_num}")
         self.client_seq_num += 1
 
-        self.state = 'WAITING_FOR_ALIVE'
+        self.state = 'READY_TIMER'
         self.timeout_handle = self.loop.call_later(5, self._handle_timeout)
 
     def connection_made(self, transport):
@@ -89,20 +95,19 @@ class ClientProtocol:
         self.client_lc = max(self.client_lc, header['logical_clock']) + 1
         # print(f"Client LC updated to: {self.client_lc}")
 
-        if self.state=='WAITING_FOR_HELLO' and header['command'] == constants.HELLO:
+        if self.state=='HELLO_WAIT' and header['command'] == constants.HELLO:
             if self.timeout_handle:
                 self.timeout_handle.cancel()
             
             self.state = "READY"
-            print(f"--- Handshake complete. Client is READY. Received {command_name} from server (Seq: {header['sequence_number']}, LC: {header['logical_clock']}) ---")
+            print(f"--- Handshake complete. Received {command_name} from server (Seq: {header['sequence_number']}, LC: {header['logical_clock']}) ---")
         
-        elif self.state == 'WAITING_FOR_ALIVE' and header['command'] == constants.ALIVE:
+        elif self.state == 'READY_TIMER' and header['command'] == constants.ALIVE:
             # If we get the ALIVE reply, cancel the timeout and go back to READY
             if self.timeout_handle:
                 self.timeout_handle.cancel()
-        
             self.state = 'READY'
-            print(f"<----- Received {command_name}. Server acknowledged data. Client is READY.")
+            print(f"<----- Received {command_name}. Server acknowledged data.")
 
         elif self.state == 'CLOSING' and header['command'] == constants.GOODBYE:
             # This is the final reply from the server. We can now close.
@@ -117,10 +122,6 @@ class ClientProtocol:
                 self.timeout_handle.cancel()
             print(f"<----- Received unexpected {command_name}. Client shutting down.")
             self.transport.close() # This will trigger connection_lost and stop the loop
-
-        elif header['command'] == constants.GOODBYE:
-            print(f"<----- Received {command_name}. Server is closing the session. Exiting.")
-            self.shutdown_event.set()  
     
     def error_received(self, exc):
         """Called by the event loop on a socket error."""
@@ -134,6 +135,12 @@ class ClientProtocol:
     
     def _handle_timeout(self):
         # Check if we are still in the state we set the timer for
-        if self.state in ('WAITING_FOR_HELLO', 'WAITING_FOR_ALIVE', 'CLOSING'):
-            print(f"--- Timeout! No reply from server while in state {self.state}. ---")
-            self.transport.close() # This will trigger connection_lost
+        if self.state in ('HELLO_WAIT', 'READY_TIMER','READY'):
+            print(f"--- Timeout! No reply from server while in state {self.state}. Sending GOODBYE. ---")
+            # Instead of closing directly, initiate the proper shutdown sequence.
+            self.send_goodbye() 
+        elif self.state == 'CLOSING':
+            # If we time out waiting for the final GOODBYE, then we can close.
+            print(f"--- Timeout! No final GOODBYE from server. Closing connection. ---")
+            self.transport.close()
+            

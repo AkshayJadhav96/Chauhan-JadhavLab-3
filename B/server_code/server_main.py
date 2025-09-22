@@ -47,3 +47,6 @@ def main():
             for sid, data in sessions.items():
                 packet = pack_header(GOODBYE, server_seq_num, sid)
                 server_socket.sendto(packet, data['address'])
+
+if __name__=='__main__':
+    main()
