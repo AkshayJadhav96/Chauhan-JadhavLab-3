@@ -34,6 +34,7 @@ Chauhan-JadhavLab-3/
 ├── B/
 │   ├── client_code/   # Partner B's Non-Threaded Client
 │   ├── server_code/   # Partner B's Threaded Server
+│   ├── protocol/   # Partner B's messaging protocol 
 |   ├── server
 |   └── client     
 └── readme.md
