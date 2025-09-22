@@ -1,5 +1,13 @@
-#!/usr/bin/env python3
-from server_code.server_main import main
+#!/usr/bin/env bash
 
-if __name__ == "__main__":
-    main()
+# This script launches the Python UDP server.
+
+# 1. Check if exactly one argument (the port number) is provided.
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <portnum>"
+    exit 1
+fi
+
+# 2. Execute the Python server as a module.
+#    This ensures Python can find the 'protocol' directory.
+python3 -m server_code.server_main "$1"
